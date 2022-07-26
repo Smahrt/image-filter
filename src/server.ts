@@ -1,8 +1,10 @@
 import express, { ErrorRequestHandler } from 'express';
 import bodyParser from 'body-parser';
-import { filterImageFromURL, deleteLocalFiles } from './util/util';
+import { filterImageFromURL, deleteLocalFiles, checkValidToken, generateToken } from './util/util';
 
 (async () => {
+  // get env vars
+  const { ADMIN_USERNAME, ADMIN_PASSWORD } = process.env;
 
   // Init the Express application
   const app = express();
@@ -29,24 +31,54 @@ import { filterImageFromURL, deleteLocalFiles } from './util/util';
 
   /**************************************************************************** */
 
-  app.get('/filteredimage', async (req, res) => {
-    const { image_url = '' } = req.query as { image_url?: string; };
-    if (image_url === '' || (!image_url.endsWith('.png') && !image_url.endsWith('.jpg'))) {
-      return res.status(422).send('Image url is required and must be a jpg or png but got ' + image_url);
-    }
+  app.post('/auth', async (req, res) => {
+    const { username, password } = req.body;
 
-    try {
-      const filteredpath = await filterImageFromURL(image_url);
-      res.sendFile(filteredpath);
-
-      // delete the localfiles after 1 min
-      setTimeout(() => {
-        deleteLocalFiles([filteredpath]);
-      }, 60000);
-    } catch (error) {
-      res.status(500).send('Error while filtering image');
+    if (username === ADMIN_USERNAME && password === ADMIN_PASSWORD) {
+      // generate a token
+      const token = await generateToken(username);
+      res.status(200).json({ token });
+    } else {
+      res.status(401).json('Wrong username or password');
     }
   });
+
+  app.get('/filteredimage',
+    async (req, res, next) => {
+      // check valid token
+      const bearerToken = req.headers.authorization;
+
+      if (!bearerToken) {
+        return res.status(422).json('Missing authorization token. Please login.');
+      }
+
+      // get token from header
+      const token = bearerToken.split(' ')[1];
+
+      const isValidToken = await checkValidToken(token);
+      if (!isValidToken) {
+        return res.status(403).json('You don\'t have permission to access this resource');
+      }
+      next();
+    },
+    async (req, res) => {
+      const { image_url = '' } = req.query as { image_url?: string; };
+      if (image_url === '' || (!image_url.endsWith('.png') && !image_url.endsWith('.jpg'))) {
+        return res.status(422).send('Image url is required and must be a jpg or png but got ' + image_url);
+      }
+
+      try {
+        const filteredpath = await filterImageFromURL(image_url);
+        res.sendFile(filteredpath);
+
+        // delete the localfiles after 1 min
+        setTimeout(() => {
+          deleteLocalFiles([filteredpath]);
+        }, 60000);
+      } catch (error) {
+        res.status(500).send('Error while filtering image');
+      }
+    });
 
   //! END @TODO1
 
