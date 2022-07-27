@@ -6,13 +6,11 @@ import jwt from 'jsonwebtoken';
 
 const { JWT_SECRET } = process.env;
 
-// filterImageFromURL
-// helper function to download, filter, and save the filtered image locally
-// returns the absolute path to the local image
-// INPUTS
-//    inputURL: string - a publicly accessible url to an image file
-// RETURNS
-//    an absolute path to a filtered image locally saved file
+/**
+ * Downloads, filters, and saves the filtered image locally
+ * @param {string} inputURL the url of the image to filter
+ * @returns {Promise<string>} the absolute path to the filtered image
+ */
 export async function filterImageFromURL(inputURL: string): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
@@ -32,22 +30,26 @@ export async function filterImageFromURL(inputURL: string): Promise<string> {
   });
 }
 
-// deleteLocalFiles
-// helper function to delete files on the local disk
-// useful to cleanup after tasks
-// INPUTS
-//    files: Array<string> an array of absolute paths to files
-export async function deleteLocalFiles(files: Array<string>) {
+/**
+ * Deletes the local files that are listed in filesArray. Usefull to clean up after tasks.
+ * @param {string[]} files an array of absolute paths to files
+ * @returns {Promise<void>} 
+ */
+export async function deleteLocalFiles(files: Array<string>): Promise<void> {
   for (let file of files) {
     fs.unlinkSync(file);
   }
 }
 
-// check valid token
+/**
+ * Checks if a supplied token is valid
+ * @param {string} token the token to check
+ * @returns {boolean} true if the token is valid, false otherwise
+ */
 export async function checkValidToken(token: string): Promise<boolean> {
   return new Promise(async (resolve, reject) => {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET);
+      const decoded: string | jwt.JwtPayload = jwt.verify(token, JWT_SECRET);
       resolve(true);
     } catch (error) {
       resolve(false);
@@ -55,11 +57,15 @@ export async function checkValidToken(token: string): Promise<boolean> {
   });
 }
 
-// generate token
+/**
+ * Generates a JWT token for a user
+ * @param username the username to generate a token for
+ * @returns {string} the generated token
+ */
 export async function generateToken(username: string): Promise<string> {
   return new Promise(async (resolve, reject) => {
     try {
-      const token = jwt.sign({ username }, JWT_SECRET);
+      const token: string = jwt.sign({ username }, JWT_SECRET);
       resolve(token);
     } catch (error) {
       reject(error);
