@@ -1,5 +1,10 @@
+// Configure dotenv to load environment variables from a .env file
+require('dotenv').config();
 import fs from "fs";
 import Jimp = require("jimp");
+import jwt from 'jsonwebtoken';
+
+const { JWT_SECRET } = process.env;
 
 // filterImageFromURL
 // helper function to download, filter, and save the filtered image locally
@@ -36,4 +41,28 @@ export async function deleteLocalFiles(files: Array<string>) {
   for (let file of files) {
     fs.unlinkSync(file);
   }
+}
+
+// check valid token
+export async function checkValidToken(token: string): Promise<boolean> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      resolve(true);
+    } catch (error) {
+      resolve(false);
+    }
+  });
+}
+
+// generate token
+export async function generateToken(username: string): Promise<string> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const token = jwt.sign({ username }, JWT_SECRET);
+      resolve(token);
+    } catch (error) {
+      reject(error);
+    }
+  });
 }
